@@ -8,6 +8,24 @@ app = Flask(__name__)
 MODEL = "claude-opus-5"
 
 
+class PrefixMiddleware:
+    """Lets the app be reverse-proxied under a URL prefix (e.g. /demo) while
+    Flask's url_for()/request.script_root still generate correct links."""
+
+    def __init__(self, wsgi_app, prefix=""):
+        self.wsgi_app = wsgi_app
+        self.prefix = prefix
+
+    def __call__(self, environ, start_response):
+        if self.prefix and environ["PATH_INFO"].startswith(self.prefix):
+            environ["PATH_INFO"] = environ["PATH_INFO"][len(self.prefix):] or "/"
+            environ["SCRIPT_NAME"] = self.prefix
+        return self.wsgi_app(environ, start_response)
+
+
+app.wsgi_app = PrefixMiddleware(app.wsgi_app, prefix=os.environ.get("URL_PREFIX", ""))
+
+
 def get_client():
     return Anthropic()  # reads ANTHROPIC_API_KEY from env
 

@@ -22,10 +22,12 @@
   </main>
 
   <script>
+    const BASE = "{{ request.script_root }}";
+
     async function checkHealth() {
       const badge = document.getElementById('health-badge');
       try {
-        const res = await fetch('/health');
+        const res = await fetch(`${BASE}/health`);
         if (res.ok) {
           badge.textContent = 'API healthy';
           badge.className = 'badge badge-ok';
@@ -51,7 +53,7 @@
       result.textContent = '';
 
       try {
-        const res = await fetch('/api/ask', {
+        const res = await fetch(`${BASE}/api/ask`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ prompt }),

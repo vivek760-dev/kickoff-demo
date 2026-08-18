@@ -60,7 +60,9 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Write .env
-        run: echo "ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}" > .env
+        run: |
+          echo "ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}" > .env
+          echo "URL_PREFIX=/demo" >> .env
 
       - name: Build production image
         run: docker build -t kickoff-demo:latest .
@@ -70,13 +72,13 @@ jobs:
 
       - name: Run new container
         run: |
-          docker run -d -p 80:8080 --env-file .env \
+          docker run -d -p 8080:8080 --env-file .env \
             --name kickoff-demo --restart unless-stopped kickoff-demo:latest
 
       - name: Health check
         run: |
           for i in $(seq 1 10); do
-            if curl -sf http://localhost/health; then
+            if curl -sf http://localhost:8080/health; then
               echo "deploy healthy"
               exit 0
             fi
