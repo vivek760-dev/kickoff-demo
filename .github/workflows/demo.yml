@@ -1,0 +1,48 @@
+name: Demo CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Smoke test app boots and /health responds
+        run: |
+          python - <<'EOF'
+          from app import app
+          client = app.test_client()
+          res = client.get("/health")
+          assert res.status_code == 200, res.status_code
+          assert res.get_json()["status"] == "ok"
+          print("health check passed")
+          EOF
+
+      - name: Docker build
+        run: docker build -t kickoff-demo:ci .
+
+      - name: Docker run + health check
+        run: |
+          docker run -d -p 8080:8080 --name kickoff-demo-ci kickoff-demo:ci
+          for i in $(seq 1 10); do
+            if curl -sf http://localhost:8080/health; then
+              echo "container healthy"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "health check failed"
+          docker logs kickoff-demo-ci
+          exit 1

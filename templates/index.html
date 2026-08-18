@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kickoff Demo</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+  <main>
+    <h1>Kickoff Demo</h1>
+
+    <div id="health-badge" class="badge badge-pending">checking API health…</div>
+
+    <form id="ask-form">
+      <label for="prompt">Ask Claude something</label>
+      <textarea id="prompt" rows="3" placeholder="Type a question..."></textarea>
+      <button type="submit" id="ask-btn">Ask Claude</button>
+    </form>
+
+    <div id="result"></div>
+  </main>
+
+  <script>
+    async function checkHealth() {
+      const badge = document.getElementById('health-badge');
+      try {
+        const res = await fetch('/health');
+        if (res.ok) {
+          badge.textContent = 'API healthy';
+          badge.className = 'badge badge-ok';
+        } else {
+          throw new Error('unhealthy');
+        }
+      } catch (e) {
+        badge.textContent = 'API unavailable';
+        badge.className = 'badge badge-error';
+      }
+    }
+
+    document.getElementById('ask-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const promptEl = document.getElementById('prompt');
+      const btn = document.getElementById('ask-btn');
+      const result = document.getElementById('result');
+      const prompt = promptEl.value.trim();
+      if (!prompt) return;
+
+      btn.disabled = true;
+      btn.textContent = 'Asking...';
+      result.textContent = '';
+
+      try {
+        const res = await fetch('/api/ask', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt }),
+        });
+        const data = await res.json();
+        result.textContent = res.ok ? data.response : `Error: ${data.error}`;
+      } catch (err) {
+        result.textContent = `Error: ${err.message}`;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Ask Claude';
+      }
+    });
+
+    checkHealth();
+  </script>
+</body>
+</html>
