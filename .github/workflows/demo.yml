@@ -35,6 +35,7 @@ jobs:
 
       - name: Docker run + health check
         run: |
+          docker rm -f kickoff-demo-ci 2>/dev/null || true
           docker run -d -p 8080:8080 --name kickoff-demo-ci kickoff-demo:ci
           for i in $(seq 1 10); do
             if curl -sf http://localhost:8080/health; then
@@ -45,4 +46,42 @@ jobs:
           done
           echo "health check failed"
           docker logs kickoff-demo-ci
+          exit 1
+
+      - name: Cleanup CI container
+        if: always()
+        run: docker rm -f kickoff-demo-ci 2>/dev/null || true
+
+  deploy:
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Write .env
+        run: echo "ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}" > .env
+
+      - name: Build production image
+        run: docker build -t kickoff-demo:latest .
+
+      - name: Stop old container
+        run: docker rm -f kickoff-demo 2>/dev/null || true
+
+      - name: Run new container
+        run: |
+          docker run -d -p 80:8080 --env-file .env \
+            --name kickoff-demo --restart unless-stopped kickoff-demo:latest
+
+      - name: Health check
+        run: |
+          for i in $(seq 1 10); do
+            if curl -sf http://localhost/health; then
+              echo "deploy healthy"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "deploy health check failed"
+          docker logs kickoff-demo
           exit 1
