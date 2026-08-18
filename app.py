@@ -5,8 +5,7 @@ from flask import Flask, jsonify, render_template, request
 
 app = Flask(__name__)
 
-MODEL = "claude-opus-5"
-
+MODEL = "claude-haiku-4-5-20251001"
 
 class PrefixMiddleware:
     """Lets the app be reverse-proxied under a URL prefix (e.g. /demo) while
